@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  avatarUrl     String?
+  onboardingDone Boolean       @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tasks         Task[]
+  projects      ProjectMember[]
+  focusSessions FocusSession[]
+}
+
+model Project {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  color       String          @default("#3B82F6")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  tasks       Task[]
+  members     ProjectMember[]
+  milestones  Milestone[]
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  role      String   @default("member")
+  userId    String
+  projectId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  priority    Priority     @default(MEDIUM)
+  status      TaskStatus   @default(TODO)
+  dueAt       DateTime?
+  order       Int          @default(0)
+  recurrence  String?
+  tags        String[]
+  checklist   Json?
+  userId      String
+  projectId   String?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  events      CalendarEvent[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  title     String
+  startsAt  DateTime
+  endsAt    DateTime
+  source    String   @default("tempo")
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+}
+
+model FocusSession {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String?
+  minutes   Int
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id        String   @id @default(cuid())
+  title     String
+  dueAt     DateTime?
+  completed Boolean  @default(false)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
